@@ -1,0 +1,59 @@
+diff --git a/make/component_wrapper.mk b/make/component_wrapper.mk
+index 278452e..5d1ea4e 100644
+--- a/make/component_wrapper.mk
++++ b/make/component_wrapper.mk
+@@ -123,6 +123,7 @@ COMPONENT_OBJS := $(foreach compsrcdir,$(COMPONENT_SRCDIRS),$(patsubst %.c,%.o,$
+ COMPONENT_OBJS += $(foreach compsrcdir,$(COMPONENT_SRCDIRS),$(patsubst %.cpp,%.o,$(wildcard $(COMPONENT_PATH)/$(compsrcdir)/*.cpp)))
+ COMPONENT_OBJS += $(foreach compsrcdir,$(COMPONENT_SRCDIRS),$(patsubst %.cc,%.o,$(wildcard $(COMPONENT_PATH)/$(compsrcdir)/*.cc)))
+ COMPONENT_OBJS += $(foreach compsrcdir,$(COMPONENT_SRCDIRS),$(patsubst %.S,%.o,$(wildcard $(COMPONENT_PATH)/$(compsrcdir)/*.S)))
++COMPONENT_OBJS += $(foreach compsrcdir,$(COMPONENT_SRCDIRS),$(patsubst %.pony,%.o,$(wildcard $(COMPONENT_PATH)/$(compsrcdir)/*.pony)))
+ # Make relative by removing COMPONENT_PATH from all found object paths
+ COMPONENT_OBJS := $(patsubst $(COMPONENT_PATH)/%,%,$(COMPONENT_OBJS))
+ else
+@@ -268,6 +269,10 @@ $(2)/%.o: $$(COMPONENT_PATH)/$(1)/%.cc $(COMMON_MAKEFILES) $(COMPONENT_MAKEFILE)
+ 	$$(CXX) $$(CXXFLAGS) $$(CPPFLAGS) $$(addprefix -I ,$$(COMPONENT_INCLUDES)) $$(addprefix -I ,$$(COMPONENT_EXTRA_INCLUDES)) -I $(1) -c $$(abspath $$<) -o $$@
+ 	$(call AppendSourceToDependencies,$$<,$$@)
+ 
++$(2)/%.o: $$(COMPONENT_PATH)/$(1)/%.pony $(COMMON_MAKEFILES) $(COMPONENT_MAKEFILE) | $(COMPONENT_OBJDIRS)
++	$$(summary) PONYC $$(patsubst $$(PWD)/%,%,$$(CURDIR))/$$@
++	$$(PONYC) $$(PONYFLAGS) -c $$(abspath $$<) -o $$@
++
+ $(2)/%.o: $$(COMPONENT_PATH)/$(1)/%.S $(COMMON_MAKEFILES) $(COMPONENT_MAKEFILE) | $(COMPONENT_OBJDIRS)
+ 	$$(summary) AS $$(patsubst $$(PWD)/%,%,$$(CURDIR))/$$@
+ 	$$(CC) $$(CPPFLAGS) $$(DEBUG_FLAGS) $$(addprefix -I ,$$(COMPONENT_INCLUDES)) $$(addprefix -I ,$$(COMPONENT_EXTRA_INCLUDES)) -I $(1) -c $$(abspath $$<) -o $$@
+diff --git a/make/project.mk b/make/project.mk
+index 9817d50..e15d279 100644
+--- a/make/project.mk
++++ b/make/project.mk
+@@ -462,6 +462,8 @@ CFLAGS := $(strip \
+ 	$(CFLAGS) \
+ 	$(EXTRA_CFLAGS))
+ 
++PONYFLAGS:=""
++
+ # List of flags to pass to C++ compiler
+ # If any flags are defined in application Makefile, add them at the end.
+ CXXFLAGS ?=
+@@ -489,18 +491,19 @@ endif
+ 
+ ARFLAGS := cru
+ 
+-export CFLAGS CPPFLAGS CXXFLAGS ARFLAGS
++export CFLAGS CPPFLAGS CXXFLAGS ARFLAGS PONYFLAGS
+ 
+ # Set target compiler. Defaults to whatever the user has
+ # configured as prefix + ye olde gcc commands
+ CC := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))gcc
++PONYC := ponyc.sh
+ CXX := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))c++
+ LD := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))ld
+ AR := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))ar
+ OBJCOPY := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))objcopy
+ OBJDUMP := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))objdump
+ SIZE := $(call dequote,$(CONFIG_SDK_TOOLPREFIX))size
+-export CC CXX LD AR OBJCOPY OBJDUMP SIZE
++export CC CXX LD AR OBJCOPY OBJDUMP SIZE PONYC
+ 
+ COMPILER_VERSION_STR := $(shell $(CC) -dumpversion)
+ COMPILER_VERSION_NUM := $(subst .,,$(COMPILER_VERSION_STR))
+
